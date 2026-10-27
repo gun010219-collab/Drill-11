@@ -8,6 +8,10 @@ class AutoRun:
         self.boy = boy
         self.start_time = 0
 
+        # AutoRun 전용 설정
+        self.speed = 450
+        self.size = 160
+
     def enter(self):
         self.start_time = get_time()
         self.boy.frame = 0
@@ -16,13 +20,25 @@ class AutoRun:
     def update(self, dt):
         boy = self.boy
 
-        boy.frame = (boy.frame + 12 * dt) % 8
+        # 빠른 달리기 애니메이션
+        boy.frame = (boy.frame + 16 * dt) % 8
 
-        # 방향키 입력 없이 자동으로 이동
-        boy.x += boy.face_dir * boy.speed * dt
+        # 방향키를 누르지 않아도 자동 이동
+        boy.x += boy.face_dir * self.speed * dt
 
-        # 현재 단계에서는 화면 경계에서 멈춤
-        boy.x = max(50, min(750, boy.x))
+        # 확대된 캐릭터 크기에 맞춘 화면 경계
+        left_limit = self.size / 2
+        right_limit = 800 - self.size / 2
+
+        # 오른쪽 끝에 도착하면 왼쪽으로 전환
+        if boy.x >= right_limit:
+            boy.x = right_limit
+            boy.face_dir = -1
+
+        # 왼쪽 끝에 도착하면 오른쪽으로 전환
+        elif boy.x <= left_limit:
+            boy.x = left_limit
+            boy.face_dir = 1
 
     def draw(self):
         boy = self.boy
@@ -33,7 +49,8 @@ class AutoRun:
             int(boy.frame) * 100,
             sprite_y,
             100, 100,
-            boy.x, boy.y
+            boy.x, boy.y,
+            self.size, self.size
         )
 
 
@@ -52,7 +69,6 @@ class Boy:
         self.idle_start_time = get_time()
         self.last_update_time = get_time()
 
-        # AutoRun 객체
         self.autorun = AutoRun(self)
 
         self.machine = Machine(
@@ -113,7 +129,6 @@ class Boy:
         self.autorun.enter()
 
     def handle_event(self, event):
-
         if event.type == SDL_KEYDOWN:
 
             if event.key == SDLK_a:
@@ -147,7 +162,6 @@ class Boy:
                 self.left_pressed = False
 
             if self.state == 'RUN':
-
                 if self.right_pressed:
                     self.face_dir = 1
 
@@ -169,7 +183,7 @@ class Boy:
                 self.go_sleep()
 
         elif self.state == 'SLEEP':
-            # 누운 자세에서도 애니메이션 반복
+            # 누운 상태에서 애니메이션 반복
             self.frame = (self.frame + 8 * dt) % 8
 
         elif self.state == 'RUN':
@@ -194,7 +208,6 @@ class Boy:
             return
 
         elif self.state == 'IDLE':
-
             sprite_y = 300 if self.face_dir == 1 else 200
 
             self.image.clip_draw(
@@ -205,8 +218,6 @@ class Boy:
             )
 
         elif self.state == 'SLEEP':
-
-            # 왼쪽을 바라본 상태에서 누워 잠자기
             if self.face_dir == -1:
                 self.image.clip_composite_draw(
                     frame * 100,
@@ -219,7 +230,6 @@ class Boy:
                     100, 100
                 )
 
-            # 오른쪽을 바라본 상태에서 누워 잠자기
             else:
                 self.image.clip_composite_draw(
                     frame * 100,
@@ -233,7 +243,6 @@ class Boy:
                 )
 
         elif self.state == 'RUN':
-
             sprite_y = 100 if self.face_dir == 1 else 0
 
             self.image.clip_draw(
