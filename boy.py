@@ -2,6 +2,41 @@ from pico2d import *
 from transitions import Machine
 
 
+# AutoRun 상태 전용 클래스
+class AutoRun:
+    def __init__(self, boy):
+        self.boy = boy
+        self.start_time = 0
+
+    def enter(self):
+        self.start_time = get_time()
+        self.boy.frame = 0
+        print('현재 상태: AUTORUN')
+
+    def update(self, dt):
+        boy = self.boy
+
+        boy.frame = (boy.frame + 12 * dt) % 8
+
+        # 방향키 입력 없이 자동으로 이동
+        boy.x += boy.face_dir * boy.speed * dt
+
+        # 이번 단계에서는 화면 경계에서 멈춤
+        boy.x = max(50, min(750, boy.x))
+
+    def draw(self):
+        boy = self.boy
+
+        sprite_y = 100 if boy.face_dir == 1 else 0
+
+        boy.image.clip_draw(
+            int(boy.frame) * 100,
+            sprite_y,
+            100, 100,
+            boy.x, boy.y
+        )
+
+
 class Boy:
     def __init__(self):
         self.x, self.y = 400, 90
@@ -12,15 +47,17 @@ class Boy:
 
         self.left_pressed = False
         self.right_pressed = False
-
         self.speed = 250
 
         self.idle_start_time = get_time()
         self.last_update_time = get_time()
 
+        # 별도로 구현한 AutoRun 객체
+        self.autorun = AutoRun(self)
+
         self.machine = Machine(
             model=self,
-            states=['IDLE', 'SLEEP', 'RUN'],
+            states=['IDLE', 'SLEEP', 'RUN', 'AUTORUN'],
             initial='IDLE',
             transitions=[
                 {
@@ -37,7 +74,7 @@ class Boy:
                 },
                 {
                     'trigger': 'start_run',
-                    'source': ['IDLE', 'SLEEP'],
+                    'source': ['IDLE', 'SLEEP', 'AUTORUN'],
                     'dest': 'RUN',
                     'after': 'enter_run'
                 },
@@ -46,6 +83,12 @@ class Boy:
                     'source': 'RUN',
                     'dest': 'IDLE',
                     'after': 'enter_idle'
+                },
+                {
+                    'trigger': 'start_autorun',
+                    'source': 'IDLE',
+                    'dest': 'AUTORUN',
+                    'after': 'enter_autorun'
                 }
             ],
             auto_transitions=False
@@ -66,11 +109,18 @@ class Boy:
         self.frame = 0
         print('현재 상태: RUN')
 
+    def enter_autorun(self):
+        self.autorun.enter()
+
     def handle_event(self, event):
 
         if event.type == SDL_KEYDOWN:
 
-            if event.key == SDLK_SPACE:
+            if event.key == SDLK_a:
+                if self.state == 'IDLE':
+                    self.start_autorun()
+
+            elif event.key == SDLK_SPACE:
                 if self.state == 'SLEEP':
                     self.wake_up()
 
@@ -130,10 +180,16 @@ class Boy:
             )
 
             self.x += direction * self.speed * dt
-
             self.x = max(50, min(750, self.x))
 
+        elif self.state == 'AUTORUN':
+            self.autorun.update(dt)
+
     def draw(self):
+
+        if self.state == 'AUTORUN':
+            self.autorun.draw()
+            return
 
         if self.state == 'RUN':
             sprite_y = 100 if self.face_dir == 1 else 0
@@ -150,8 +206,6 @@ class Boy:
         self.image.clip_draw(
             frame * 100,
             sprite_y,
-            100,
-            100,
-            self.x,
-            self.y
+            100, 100,
+            self.x, self.y
         )
