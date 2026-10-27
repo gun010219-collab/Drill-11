@@ -21,7 +21,7 @@ class AutoRun:
         # 방향키 입력 없이 자동으로 이동
         boy.x += boy.face_dir * boy.speed * dt
 
-        # 이번 단계에서는 화면 경계에서 멈춤
+        # 현재 단계에서는 화면 경계에서 멈춤
         boy.x = max(50, min(750, boy.x))
 
     def draw(self):
@@ -52,7 +52,7 @@ class Boy:
         self.idle_start_time = get_time()
         self.last_update_time = get_time()
 
-        # 별도로 구현한 AutoRun 객체
+        # AutoRun 객체
         self.autorun = AutoRun(self)
 
         self.machine = Machine(
@@ -169,7 +169,8 @@ class Boy:
                 self.go_sleep()
 
         elif self.state == 'SLEEP':
-            self.frame = 0
+            # 누운 자세에서도 애니메이션 반복
+            self.frame = (self.frame + 8 * dt) % 8
 
         elif self.state == 'RUN':
             self.frame = (self.frame + 12 * dt) % 8
@@ -186,26 +187,58 @@ class Boy:
             self.autorun.update(dt)
 
     def draw(self):
+        frame = int(self.frame)
 
         if self.state == 'AUTORUN':
             self.autorun.draw()
             return
 
-        if self.state == 'RUN':
-            sprite_y = 100 if self.face_dir == 1 else 0
-            frame = int(self.frame)
+        elif self.state == 'IDLE':
 
-        else:
             sprite_y = 300 if self.face_dir == 1 else 200
 
-            if self.state == 'SLEEP':
-                frame = 0
-            else:
-                frame = int(self.frame)
+            self.image.clip_draw(
+                frame * 100,
+                sprite_y,
+                100, 100,
+                self.x, self.y
+            )
 
-        self.image.clip_draw(
-            frame * 100,
-            sprite_y,
-            100, 100,
-            self.x, self.y
-        )
+        elif self.state == 'SLEEP':
+
+            # 왼쪽을 바라본 상태에서 누워 잠자기
+            if self.face_dir == -1:
+                self.image.clip_composite_draw(
+                    frame * 100,
+                    200,
+                    100, 100,
+                    -3.141592 / 2,
+                    '',
+                    self.x + 25,
+                    self.y - 25,
+                    100, 100
+                )
+
+            # 오른쪽을 바라본 상태에서 누워 잠자기
+            else:
+                self.image.clip_composite_draw(
+                    frame * 100,
+                    300,
+                    100, 100,
+                    3.141592 / 2,
+                    '',
+                    self.x - 25,
+                    self.y - 25,
+                    100, 100
+                )
+
+        elif self.state == 'RUN':
+
+            sprite_y = 100 if self.face_dir == 1 else 0
+
+            self.image.clip_draw(
+                frame * 100,
+                sprite_y,
+                100, 100,
+                self.x, self.y
+            )
