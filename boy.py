@@ -8,7 +8,6 @@ class AutoRun:
         self.boy = boy
         self.start_time = 0
 
-        # AutoRun 전용 설정
         self.speed = 450
         self.size = 160
 
@@ -23,19 +22,19 @@ class AutoRun:
         # 빠른 달리기 애니메이션
         boy.frame = (boy.frame + 16 * dt) % 8
 
-        # 방향키를 누르지 않아도 자동 이동
+        # 자동 이동
         boy.x += boy.face_dir * self.speed * dt
 
-        # 확대된 캐릭터 크기에 맞춘 화면 경계
+        # 확대된 캐릭터의 좌우 이동 범위
         left_limit = self.size / 2
         right_limit = 800 - self.size / 2
 
-        # 오른쪽 끝에 도착하면 왼쪽으로 전환
+        # 오른쪽 끝에서 방향 반전
         if boy.x >= right_limit:
             boy.x = right_limit
             boy.face_dir = -1
 
-        # 왼쪽 끝에 도착하면 오른쪽으로 전환
+        # 왼쪽 끝에서 방향 반전
         elif boy.x <= left_limit:
             boy.x = left_limit
             boy.face_dir = 1
@@ -105,6 +104,12 @@ class Boy:
                     'source': 'IDLE',
                     'dest': 'AUTORUN',
                     'after': 'enter_autorun'
+                },
+                {
+                    'trigger': 'stop_autorun',
+                    'source': 'AUTORUN',
+                    'dest': 'IDLE',
+                    'after': 'enter_idle'
                 }
             ],
             auto_transitions=False
@@ -198,7 +203,14 @@ class Boy:
             self.x = max(50, min(750, self.x))
 
         elif self.state == 'AUTORUN':
-            self.autorun.update(dt)
+
+            # AutoRun 진입 후 5초가 지나면 IDLE로 복귀
+            elapsed_time = now - self.autorun.start_time
+
+            if elapsed_time >= 5.0:
+                self.stop_autorun()
+            else:
+                self.autorun.update(dt)
 
     def draw(self):
         frame = int(self.frame)
@@ -229,7 +241,6 @@ class Boy:
                     self.y - 25,
                     100, 100
                 )
-
             else:
                 self.image.clip_composite_draw(
                     frame * 100,
